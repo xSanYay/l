@@ -1,4 +1,3 @@
-
 numBits = 20; 
 numHops = 6; 
 hopFrequencies = [1, 2, 3, 4, 5, 6] * 1e3; 
