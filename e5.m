@@ -1,29 +1,34 @@
-M = 16; 
-numSymbols = 1e5; 
-SNRdB = 0:2:20; 
-EbNo = SNRdB + 10*log10(log2(M)); 
-impairments = [0.1, 0.05, 0.05, 0.05]; 
-SER = zeros(1, length(SNRdB)); 
-
-for k = 1:length(SNRdB)
-    data = randi([0 M-1], numSymbols, 1); 
-    modSignal = qammod(data, M, 'UnitAveragePower', true); 
-    I = real(modSignal); Q = imag(modSignal);
-    rx = (1+impairments(1))*I + i*(1-impairments(1))*Q; 
-    rx = rx .* exp(1i*impairments(2)) + impairments(3) + 1i*impairments(4); 
-    rx = awgn(rx, SNRdB(k), 'measured'); 
-    SER(k) = sum(data ~= qamdemod(rx, M, 'UnitAveragePower', true)) / numSymbols; 
+M = 16;
+numSymbols = 1e5;
+EbN0_db = 0:2:20;
+EbN0 = EbN0_db - 10*log10(log2(M));
+numSNR = length(EbN0_db);
+SER = zeros(1,numSNR);
+gainImbalance = 0.1;
+phaseMismatch = 0.05;
+dcOffsetI = 0.05;
+dcOffsetQ = 0.05;
+for i = 1:numSNR
+   dataSymbols = randi([0 M-1], numSymbols, 1);
+   modulatedSignal = qammod(dataSymbols, M, 'UnitAveragePower', true);
+   I = real(modulatedSignal);
+   Q = imag(modulatedSignal);
+   receivedSignal = (1 + gainImbalance)*I + 1i*(1 - gainImbalance)*Q;
+   receivedSignal = receivedSignal .* exp(1i * phaseMismatch);
+   receivedSignal = receivedSignal + dcOffsetI + 1i * dcOffsetQ;
+   receivedSignal = awgn(receivedSignal, EbN0_db(i), 'measured');
+   demodulatedSignal = qamdemod(receivedSignal, M, 'UnitAveragePower', true);
+   SER(i) = sum(dataSymbols ~= demodulatedSignal) / numSymbols;
 end
-
-% Plot SER vs Eb/No
-semilogy(EbNo, SER, 'b-o'); xlabel('E_b/N_0 (dB)'); ylabel('SER');
-title('16-QAM SER with Receiver Impairments'); grid on;
-
-
-disp('SNR (dB)    SER');
-disp([SNRdB.' SER.']);
-
-
-scatterplot(rx);
-title('Received Signal Constellation at 20 dB');
-grid on
+semilogy(EbN0, SER, 'b-o');
+title('SER vs E_b/N_0 for 16-QAM with Receiver Impairments');
+xlabel('Eb/N0 in db');
+ylabel('Symbol Error Rate (SER)');
+grid on;
+fprintf('SNR(db)   SER\n');
+for j = 1:numSNR
+   fprintf('%8.2f   %e\n', EbN0_db(j), SER(j));
+end
+scatterplot(receivedSignal);
+title('Received Signal Constellation with Receiver Impairments (SNR = 20 dB)');
+grid on;
